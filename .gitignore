@@ -26,6 +26,14 @@ uploads/
 *.swp
 *.swo
 
+# Playwright MCP
+.playwright-mcp/
+
+# Node
+node_modules/
+package.json
+package-lock.json
+
 # OS
 .DS_Store
 Thumbs.db
