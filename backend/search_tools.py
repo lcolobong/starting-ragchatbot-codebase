@@ -123,6 +123,59 @@ class CourseSearchTool(Tool):
         
         return "\n\n".join(formatted)
 
+class CourseOutlineTool(Tool):
+    """Tool for retrieving the full outline/structure of a course"""
+
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+        self.last_sources = []
+
+    def get_tool_definition(self) -> Dict[str, Any]:
+        return {
+            "name": "get_course_outline",
+            "description": "Get the full outline of a course including its title, link, and complete lesson list with lesson numbers and titles",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title (partial matches work, e.g. 'MCP', 'RAG')"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+
+    def execute(self, course_name: str) -> str:
+        # Resolve course name via semantic search
+        resolved_title = self.store._resolve_course_name(course_name)
+        if not resolved_title:
+            return f"No course found matching '{course_name}'."
+
+        # Get full course metadata
+        metadata = self.store.get_course_metadata(resolved_title)
+        if not metadata:
+            return f"Could not retrieve metadata for '{resolved_title}'."
+
+        # Format structured output
+        lines = [
+            f"Course: {metadata['title']}",
+            f"Link: {metadata.get('course_link', 'N/A')}",
+            "",
+            "Lessons:"
+        ]
+        for lesson in metadata.get('lessons', []):
+            lines.append(f"- Lesson {lesson['lesson_number']}: {lesson['lesson_title']}")
+
+        # Set sources for the UI
+        self.last_sources = [{
+            "text": metadata['title'],
+            "url": metadata.get('course_link')
+        }]
+
+        return "\n".join(lines)
+
+
 class ToolManager:
     """Manages available tools for the AI"""
     
