@@ -3,14 +3,16 @@ from typing import List, Optional, Dict, Any
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
+    MAX_TOOL_ROUNDS = 2
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to search and outline tools for course information.
 
 Tool Usage:
 - **Course outline/structure questions** (e.g. "What's the outline of X?", "What lessons are in X?", "Show me the structure of X"): Use `get_course_outline` to get the full lesson list
 - **Course content questions** (e.g. "What was covered in lesson 5?", "Explain topic X from course Y"): Use `search_course_content` to search within course materials
-- **One tool call per query maximum**
+- **Up to two sequential tool calls per query** — use a second call only when the first result is insufficient or you need information from a different source
 - Synthesize tool results into accurate, fact-based responses
 - If a tool yields no results, state this clearly without offering alternatives
 
@@ -79,58 +81,73 @@ Provide only the direct answer to what was asked.
         
         # Get response from Claude
         response = self.client.messages.create(**api_params)
-        
-        # Handle tool execution if needed
-        if response.stop_reason == "tool_use" and tool_manager:
-            return self._handle_tool_execution(response, api_params, tool_manager)
-        
-        # Return direct response
+
+        # Handle up to MAX_TOOL_ROUNDS sequential tool calls
+        round = 0
+        while round < self.MAX_TOOL_ROUNDS:
+            if response.stop_reason != "tool_use" or not tool_manager:
+                break
+            include_tools = (round < self.MAX_TOOL_ROUNDS - 1)
+            response, updated_messages = self._handle_tool_execution(
+                response, api_params, tool_manager, include_tools
+            )
+            api_params["messages"] = updated_messages
+            round += 1
+
         return response.content[0].text
     
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
+    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any],
+                               tool_manager, include_tools: bool):
         """
         Handle execution of tool calls and get follow-up response.
-        
+
         Args:
             initial_response: The response containing tool use requests
             base_params: Base API parameters
             tool_manager: Manager to execute tools
-            
+            include_tools: Whether to include tools in the follow-up call
+
         Returns:
-            Final response text after tool execution
+            Tuple of (response_object, messages_list)
         """
         # Start with existing messages
         messages = base_params["messages"].copy()
-        
+
         # Add AI's tool use response
         messages.append({"role": "assistant", "content": initial_response.content})
-        
+
         # Execute all tool calls and collect results
         tool_results = []
         for content_block in initial_response.content:
             if content_block.type == "tool_use":
-                tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
-                )
-                
+                try:
+                    tool_result = tool_manager.execute_tool(
+                        content_block.name,
+                        **content_block.input
+                    )
+                except Exception as e:
+                    tool_result = f"Tool execution error: {str(e)}"
+
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": content_block.id,
                     "content": tool_result
                 })
-        
+
         # Add tool results as single message
         if tool_results:
             messages.append({"role": "user", "content": tool_results})
-        
-        # Prepare final API call without tools
-        final_params = {
+
+        # Prepare follow-up API call
+        follow_up_params = {
             **self.base_params,
             "messages": messages,
             "system": base_params["system"]
         }
-        
-        # Get final response
-        final_response = self.client.messages.create(**final_params)
-        return final_response.content[0].text
+        if include_tools and "tools" in base_params:
+            follow_up_params["tools"] = base_params["tools"]
+            follow_up_params["tool_choice"] = {"type": "auto"}
+
+        # Get follow-up response
+        follow_up_response = self.client.messages.create(**follow_up_params)
+        return (follow_up_response, messages)
