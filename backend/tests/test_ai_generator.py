@@ -22,6 +22,7 @@ def _make_tool_use_block(tool_id, name, tool_input):
 
 # ── Direct (no-tool) responses ─────────────────────────────────────────
 
+
 @patch("ai_generator.anthropic.Anthropic")
 def test_direct_response_no_tools(MockAnthropic):
     client = MockAnthropic.return_value
@@ -66,6 +67,7 @@ def test_no_tools_means_no_tool_params(MockAnthropic):
 
 
 # ── Conversation history in system prompt ───────────────────────────────
+
 
 @patch("ai_generator.anthropic.Anthropic")
 def test_history_appended_to_system_prompt(MockAnthropic):
@@ -113,6 +115,7 @@ def test_empty_history_uses_plain_system_prompt(MockAnthropic):
 
 # ── Tool-use round-trip ─────────────────────────────────────────────────
 
+
 @patch("ai_generator.anthropic.Anthropic")
 def test_tool_use_executes_tool_via_manager(MockAnthropic):
     client = MockAnthropic.return_value
@@ -135,7 +138,9 @@ def test_tool_use_executes_tool_via_manager(MockAnthropic):
     tools = [{"name": "search_course_content"}]
     result = gen.generate_response("q", tools=tools, tool_manager=tool_manager)
 
-    tool_manager.execute_tool.assert_called_once_with("search_course_content", query="rag")
+    tool_manager.execute_tool.assert_called_once_with(
+        "search_course_content", query="rag"
+    )
     assert result == "Final answer"
 
 
@@ -204,6 +209,7 @@ def test_tool_use_without_manager_returns_text(MockAnthropic):
 
 # ── Base params ─────────────────────────────────────────────────────────
 
+
 @patch("ai_generator.anthropic.Anthropic")
 def test_base_params_always_included(MockAnthropic):
     client = MockAnthropic.return_value
@@ -222,13 +228,18 @@ def test_base_params_always_included(MockAnthropic):
 
 # ── Sequential multi-tool calling ─────────────────────────────────────
 
+
 @patch("ai_generator.anthropic.Anthropic")
 def test_two_sequential_tool_calls(MockAnthropic):
     """Two tool-use rounds: execute_tool called twice, 3 total API calls, returns text from 3rd."""
     client = MockAnthropic.return_value
 
-    tool_block_1 = _make_tool_use_block("t1", "get_course_outline", {"course_name": "MCP"})
-    tool_block_2 = _make_tool_use_block("t2", "search_course_content", {"query": "lesson 3"})
+    tool_block_1 = _make_tool_use_block(
+        "t1", "get_course_outline", {"course_name": "MCP"}
+    )
+    tool_block_2 = _make_tool_use_block(
+        "t2", "search_course_content", {"query": "lesson 3"}
+    )
 
     resp1 = Mock(content=[tool_block_1], stop_reason="tool_use")
     resp2 = Mock(content=[tool_block_2], stop_reason="tool_use")
@@ -239,7 +250,9 @@ def test_two_sequential_tool_calls(MockAnthropic):
     tool_manager.execute_tool.side_effect = ["outline data", "content data"]
 
     gen = AIGenerator(api_key="fake", model="m")
-    result = gen.generate_response("q", tools=[{"name": "t"}], tool_manager=tool_manager)
+    result = gen.generate_response(
+        "q", tools=[{"name": "t"}], tool_manager=tool_manager
+    )
 
     assert result == "Combined answer"
     assert client.messages.create.call_count == 3
@@ -253,7 +266,9 @@ def test_final_round_followup_excludes_tools(MockAnthropic):
     """The 3rd API call (final round follow-up) has no tools/tool_choice."""
     client = MockAnthropic.return_value
 
-    tool_block_1 = _make_tool_use_block("t1", "get_course_outline", {"course_name": "X"})
+    tool_block_1 = _make_tool_use_block(
+        "t1", "get_course_outline", {"course_name": "X"}
+    )
     tool_block_2 = _make_tool_use_block("t2", "search_course_content", {"query": "y"})
 
     resp1 = Mock(content=[tool_block_1], stop_reason="tool_use")
@@ -277,7 +292,9 @@ def test_messages_accumulate_across_rounds(MockAnthropic):
     """The 3rd call messages contain: user, assistant(tool1), user(result1), assistant(tool2), user(result2)."""
     client = MockAnthropic.return_value
 
-    tool_block_1 = _make_tool_use_block("t1", "get_course_outline", {"course_name": "X"})
+    tool_block_1 = _make_tool_use_block(
+        "t1", "get_course_outline", {"course_name": "X"}
+    )
     tool_block_2 = _make_tool_use_block("t2", "search_course_content", {"query": "y"})
 
     resp1 = Mock(content=[tool_block_1], stop_reason="tool_use")
@@ -294,11 +311,11 @@ def test_messages_accumulate_across_rounds(MockAnthropic):
     third_call_kwargs = client.messages.create.call_args_list[2][1]
     messages = third_call_kwargs["messages"]
     assert len(messages) == 5
-    assert messages[0]["role"] == "user"           # original query
-    assert messages[1]["role"] == "assistant"       # tool_use 1
-    assert messages[2]["role"] == "user"            # tool_result 1
-    assert messages[3]["role"] == "assistant"       # tool_use 2
-    assert messages[4]["role"] == "user"            # tool_result 2
+    assert messages[0]["role"] == "user"  # original query
+    assert messages[1]["role"] == "assistant"  # tool_use 1
+    assert messages[2]["role"] == "user"  # tool_result 1
+    assert messages[3]["role"] == "assistant"  # tool_use 2
+    assert messages[4]["role"] == "user"  # tool_result 2
 
 
 @patch("ai_generator.anthropic.Anthropic")
@@ -315,7 +332,9 @@ def test_single_tool_call_still_works(MockAnthropic):
     tool_manager.execute_tool.return_value = "results"
 
     gen = AIGenerator(api_key="fake", model="m")
-    result = gen.generate_response("q", tools=[{"name": "t"}], tool_manager=tool_manager)
+    result = gen.generate_response(
+        "q", tools=[{"name": "t"}], tool_manager=tool_manager
+    )
 
     assert result == "answer"
     assert client.messages.create.call_count == 2
@@ -336,7 +355,9 @@ def test_tool_execution_error_sent_to_claude(MockAnthropic):
     tool_manager.execute_tool.side_effect = RuntimeError("connection failed")
 
     gen = AIGenerator(api_key="fake", model="m")
-    result = gen.generate_response("q", tools=[{"name": "t"}], tool_manager=tool_manager)
+    result = gen.generate_response(
+        "q", tools=[{"name": "t"}], tool_manager=tool_manager
+    )
 
     assert result == "handled error"
     second_call_kwargs = client.messages.create.call_args_list[1][1]
@@ -354,7 +375,9 @@ def test_no_tool_use_first_round_exits_immediately(MockAnthropic):
 
     tool_manager = MagicMock()
     gen = AIGenerator(api_key="fake", model="m")
-    result = gen.generate_response("q", tools=[{"name": "t"}], tool_manager=tool_manager)
+    result = gen.generate_response(
+        "q", tools=[{"name": "t"}], tool_manager=tool_manager
+    )
 
     assert result == "direct answer"
     assert client.messages.create.call_count == 1
@@ -366,7 +389,9 @@ def test_max_tool_rounds_limits_iterations(MockAnthropic):
     """Loop is bounded: exactly 3 API calls for 2 tool rounds, not more."""
     client = MockAnthropic.return_value
 
-    tool_block_1 = _make_tool_use_block("t1", "get_course_outline", {"course_name": "X"})
+    tool_block_1 = _make_tool_use_block(
+        "t1", "get_course_outline", {"course_name": "X"}
+    )
     tool_block_2 = _make_tool_use_block("t2", "search_course_content", {"query": "y"})
 
     resp1 = Mock(content=[tool_block_1], stop_reason="tool_use")
@@ -378,7 +403,9 @@ def test_max_tool_rounds_limits_iterations(MockAnthropic):
     tool_manager.execute_tool.side_effect = ["r1", "r2"]
 
     gen = AIGenerator(api_key="fake", model="m")
-    result = gen.generate_response("q", tools=[{"name": "t"}], tool_manager=tool_manager)
+    result = gen.generate_response(
+        "q", tools=[{"name": "t"}], tool_manager=tool_manager
+    )
 
     assert result == "final"
     assert client.messages.create.call_count == 3

@@ -16,6 +16,7 @@ def mock_vector_store():
 @pytest.fixture
 def search_results_factory():
     """Factory for creating SearchResults with test data."""
+
     def _make(documents=None, metadata=None, distances=None, error=None):
         return SearchResults(
             documents=documents or [],
@@ -23,6 +24,7 @@ def search_results_factory():
             distances=distances or [],
             error=error,
         )
+
     return _make
 
 
@@ -54,9 +56,11 @@ def mock_anthropic_client():
 @pytest.fixture
 def make_api_response():
     """Factory for creating mock Anthropic API responses."""
+
     def _make(content_blocks, stop_reason="end_turn"):
         resp = Mock()
         resp.content = content_blocks
         resp.stop_reason = stop_reason
         return resp
+
     return _make
