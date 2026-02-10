@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Course Materials RAG (Retrieval-Augmented Generation) system. Full-stack web app that lets users query course materials via semantic search (ChromaDB + SentenceTransformers) and get AI-powered responses from Anthropic's Claude.
 
+## Development Rules
+
+- Always use `uv` to run Python files and manage dependencies. Never use `pip` directly.
+
 ## Commands
 
 **Install dependencies:**
