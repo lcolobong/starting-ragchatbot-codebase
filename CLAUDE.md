@@ -30,7 +30,14 @@ cd backend && uv run uvicorn app:app --reload --port 8000
 
 **Environment setup:** Create `.env` in project root with `ANTHROPIC_API_KEY=<key>`. See `.env.example`.
 
-No test framework or linter is currently configured.
+**Quality checks:**
+```bash
+make format        # auto-format all Python files with Black
+make check-format  # check formatting without modifying (CI-friendly)
+make test          # run pytest
+make quality       # run format check + tests
+make fix           # auto-fix formatting, then run tests
+```
 
 ## Architecture
 

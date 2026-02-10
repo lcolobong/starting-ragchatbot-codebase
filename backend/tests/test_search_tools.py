@@ -3,8 +3,8 @@
 from search_tools import CourseSearchTool
 from vector_store import SearchResults
 
-
 # ── Error handling ──────────────────────────────────────────────────────
+
 
 def test_execute_returns_error_when_search_fails(mock_vector_store):
     mock_vector_store.search.return_value = SearchResults(
@@ -15,6 +15,7 @@ def test_execute_returns_error_when_search_fails(mock_vector_store):
 
 
 # ── Empty results ───────────────────────────────────────────────────────
+
 
 def test_execute_empty_results_no_filters(mock_vector_store):
     tool = CourseSearchTool(mock_vector_store)
@@ -49,6 +50,7 @@ def test_execute_empty_results_lesson_zero(mock_vector_store):
 
 
 # ── Formatted results ──────────────────────────────────────────────────
+
 
 def test_execute_formats_single_result_with_lesson(mock_vector_store):
     mock_vector_store.search.return_value = SearchResults(
@@ -90,6 +92,7 @@ def test_execute_formats_multiple_results(mock_vector_store):
 
 
 # ── Source deduplication and URL resolution ─────────────────────────────
+
 
 def test_execute_deduplicates_sources(mock_vector_store):
     mock_vector_store.search.return_value = SearchResults(
@@ -146,6 +149,7 @@ def test_execute_url_both_none(mock_vector_store):
 
 
 # ── Parameter pass-through ──────────────────────────────────────────────
+
 
 def test_execute_passes_params_to_store(mock_vector_store):
     tool = CourseSearchTool(mock_vector_store)

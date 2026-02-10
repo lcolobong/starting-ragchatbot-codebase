@@ -6,13 +6,15 @@ from rag_system import RAGSystem
 
 def _build_rag_system():
     """Construct a RAGSystem with all heavy dependencies mocked out."""
-    with patch("rag_system.DocumentProcessor"), \
-         patch("rag_system.VectorStore"), \
-         patch("rag_system.AIGenerator") as MockGen, \
-         patch("rag_system.SessionManager") as MockSession, \
-         patch("rag_system.CourseSearchTool"), \
-         patch("rag_system.CourseOutlineTool"), \
-         patch("rag_system.ToolManager") as MockTM:
+    with (
+        patch("rag_system.DocumentProcessor"),
+        patch("rag_system.VectorStore"),
+        patch("rag_system.AIGenerator") as MockGen,
+        patch("rag_system.SessionManager") as MockSession,
+        patch("rag_system.CourseSearchTool"),
+        patch("rag_system.CourseOutlineTool"),
+        patch("rag_system.ToolManager") as MockTM,
+    ):
 
         config = MagicMock()
         config.CHUNK_SIZE = 800
@@ -30,6 +32,7 @@ def _build_rag_system():
 
 # ── Prompt template ─────────────────────────────────────────────────────
 
+
 def test_query_wraps_in_prompt_template():
     system = _build_rag_system()
     system.ai_generator.generate_response.return_value = "answer"
@@ -38,10 +41,14 @@ def test_query_wraps_in_prompt_template():
     system.query("What is RAG?")
 
     call_kwargs = system.ai_generator.generate_response.call_args[1]
-    assert call_kwargs["query"] == "Answer this question about course materials: What is RAG?"
+    assert (
+        call_kwargs["query"]
+        == "Answer this question about course materials: What is RAG?"
+    )
 
 
 # ── Session history ─────────────────────────────────────────────────────
+
 
 def test_query_retrieves_session_history():
     system = _build_rag_system()
@@ -78,6 +85,7 @@ def test_query_no_session_skips_history():
 
 # ── Tools and tool_manager forwarding ───────────────────────────────────
 
+
 def test_query_passes_tools_and_manager():
     system = _build_rag_system()
     system.ai_generator.generate_response.return_value = "answer"
@@ -92,6 +100,7 @@ def test_query_passes_tools_and_manager():
 
 
 # ── Sources ─────────────────────────────────────────────────────────────
+
 
 def test_query_collects_sources():
     system = _build_rag_system()
@@ -117,6 +126,7 @@ def test_query_resets_sources_after_retrieval():
 
 # ── Session updates ─────────────────────────────────────────────────────
 
+
 def test_query_updates_session_with_exchange():
     system = _build_rag_system()
     system.ai_generator.generate_response.return_value = "the answer"
@@ -140,6 +150,7 @@ def test_query_skips_session_update_without_id():
 
 
 # ── Return structure ────────────────────────────────────────────────────
+
 
 def test_query_returns_correct_tuple_structure():
     system = _build_rag_system()
